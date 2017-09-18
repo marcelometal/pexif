@@ -150,8 +150,8 @@ class DefaultSegment:
         self.data = data
         self.mode = mode
         self.fd = fd
-        self.code = jpeg_markers.get(self.marker, ('Unknown-{}'.format(self.marker), None))[0]
-        assert mode in ["rw", "ro"]
+        self.code = jpeg_markers.get(self.marker, (six.b('Unknown-{}'.format(self.marker)), None))[0]
+        assert mode in [six.b("rw"), six.b("ro")]
         if self.data is not None:
             self.parse_data(data)
 
@@ -166,9 +166,9 @@ class DefaultSegment:
         overloaded by subclasses, they should instead override the get_data()
         method."""
         fd.write(six.b('\xff'))
-        fd.write(pack('B', self.marker))
+        fd.write(pack(six.b('B'), self.marker))
         data = self.get_data()
-        fd.write(pack('>H', len(data) + 2))
+        fd.write(pack(six.b('>H'), len(data) + 2))
         fd.write(data)
 
     def get_data(self):
@@ -210,7 +210,7 @@ class StartOfScanSegment(DefaultSegment):
                 if img_data[i:i + 2] == EOI_MARKER:
                     break
             else:
-                raise JpegFile.InvalidFile("Unable to find EOI marker.")
+                raise JpegFile.InvalidFile(six.b("Unable to find EOI marker."))
             remaining = len(img_data) - i
 
         self.img_data = img_data[:-remaining]
@@ -240,14 +240,14 @@ class ExifType:
         self.size = size
         ExifType.lookup[type_id] = self
 
-BYTE = ExifType(1, "byte", 1).id
-ASCII = ExifType(2, "ascii", 1).id
-SHORT = ExifType(3, "short", 2).id
-LONG = ExifType(4, "long", 4).id
-RATIONAL = ExifType(5, "rational", 8).id
-UNDEFINED = ExifType(7, "undefined", 1).id
-SLONG = ExifType(9, "slong", 4).id
-SRATIONAL = ExifType(10, "srational", 8).id
+BYTE = ExifType(1, six.b("byte"), 1).id
+ASCII = ExifType(2, six.b("ascii"), 1).id
+SHORT = ExifType(3, six.b("short"), 2).id
+LONG = ExifType(4, six.b("long"), 4).id
+RATIONAL = ExifType(5, six.b("rational"), 8).id
+UNDEFINED = ExifType(7, six.b("undefined"), 1).id
+SLONG = ExifType(9, six.b("slong"), 4).id
+SRATIONAL = ExifType(10, six.b("srational"), 8).id
 
 
 def exif_type_size(exif_type):
@@ -265,7 +265,7 @@ class Rational:
 
     def __repr__(self):
         """Return a string representation of the fraction."""
-        return "%s / %s" % (self.num, self.den)
+        return six.b("%s / %s" % (self.num, self.den))
 
     def as_tuple(self):
         """Return the fraction a numerator, denominator tuple."""
@@ -335,8 +335,8 @@ class IfdData(object):
                 if self.has_key(key):
                     return self[key]
                 else:
-                    if self.mode == "rw":
-                        new = entry[1](self.e, 0, "rw", self.exif_file)
+                    if self.mode == six.b("rw"):
+                        new = entry[1](self.e, 0, six.b("rw"), self.exif_file)
                         self[key] = new
                         return new
                     else:
@@ -352,7 +352,7 @@ class IfdData(object):
         for entry in self.entries:
             if key == entry[0]:
                 if entry[1] == ASCII and not entry[2] is None:
-                    return entry[2].strip('\0')
+                    return entry[2].strip(six.b('\0'))
                 else:
                     return entry[2]
         return None
@@ -376,7 +376,7 @@ class IfdData(object):
             raise Exception(msg.format(key, self.tags[key]))
         if self.tags[key][2] == ASCII:
             if value is not None and not value.endswith('\0'):
-                value = value + '\0'
+                value = value + six.b('\0')
         for i in range(len(self.entries)):
             if key == self.entries[i][0]:
                 found = 1
@@ -402,15 +402,15 @@ class IfdData(object):
         if data is None:
             return
 
-        num_entries = unpack(e + 'H', data[offset:offset+2])[0]
-        next = unpack(e + "I", data[offset+2+12*num_entries:
+        num_entries = unpack(e + six.b('H'), data[offset:offset+2])[0]
+        next = unpack(e + six.b("I"), data[offset+2+12*num_entries:
                                     offset+2+12*num_entries+4])[0]
         debug("OFFSET %s - %s" % (offset, next))
 
         for i in range(num_entries):
             start = (i * 12) + 2 + offset
             debug("START: ", start)
-            entry = unpack(e + "HHII", data[start:start+12])
+            entry = unpack(e + six.b("HHII"), data[start:start+12])
             tag, exif_type, components, the_data = entry
 
             debug("%s %s %s %s %s" % (hex(tag), exif_type,
@@ -435,8 +435,8 @@ class IfdData(object):
                 if exif_type == BYTE or exif_type == UNDEFINED:
                     actual_data = list(the_data)
                 elif exif_type == ASCII:
-                    if the_data[-1] != '\0':
-                        actual_data = the_data + '\0'
+                    if the_data[-1] != six.b('\0'):
+                        actual_data = the_data + six.b('\0')
                         # raise JpegFile.InvalidFile("ASCII tag '%s' not
                         # NULL-terminated: %s [%s]" % (self.tags.get(tag,
                         # (hex(tag), 0))[0], the_data, map(ord, the_data)))
@@ -445,13 +445,13 @@ class IfdData(object):
                         # the_data, map(ord, the_data)))
                     actual_data = the_data
                 elif exif_type == SHORT:
-                    actual_data = list(unpack(e + ("H" * components), the_data))
+                    actual_data = list(unpack(e + (six.b("H") * components), the_data))
                 elif exif_type == LONG:
-                    actual_data = list(unpack(e + ("I" * components), the_data))
+                    actual_data = list(unpack(e + (six.b("I") * components), the_data))
                 elif exif_type == SLONG:
-                    actual_data = list(unpack(e + ("i" * components), the_data))
+                    actual_data = list(unpack(e + (six.b("i") * components), the_data))
                 elif exif_type == RATIONAL or exif_type == SRATIONAL:
-                    t = 'II' if exif_type == RATIONAL else 'ii'
+                    t = six.b('II') if exif_type == RATIONAL else six.b('ii')
                     actual_data = []
                     for i in range(components):
                         actual_data.append(Rational(*unpack(e + t,
@@ -478,12 +478,12 @@ class IfdData(object):
 
     def getdata(self, e, offset, last=0):
         data_offset = offset+2+len(self.entries)*12+4
-        output_data = ""
+        output_data = six.b("")
 
         out_entries = []
 
         # Add any specifc data for the particular type
-        extra_data = self.extra_ifd_data(data_offset)
+        extra_data = six.b(self.extra_ifd_data(data_offset))
         data_offset += len(extra_data)
         output_data += extra_data
 
@@ -515,37 +515,37 @@ class IfdData(object):
             elif exif_type == ASCII:
                 actual_data = the_data
             elif exif_type == SHORT:
-                actual_data = pack(e + ("H" * components), *the_data)
+                actual_data = pack(e + (six.b("H") * components), *the_data)
             elif exif_type == LONG:
-                actual_data = pack(e + ("I" * components), *the_data)
+                actual_data = pack(e + (six.b("I") * components), *the_data)
             elif exif_type == SLONG:
-                actual_data = pack(e + ("i" * components), *the_data)
+                actual_data = pack(e + (six.b("i") * components), *the_data)
             elif exif_type == RATIONAL or exif_type == SRATIONAL:
-                t = 'II' if exif_type == RATIONAL else 'ii'
-                actual_data = ""
+                t = six.b('II') if exif_type == RATIONAL else six.b('ii')
+                actual_data = six.b("")
                 for i in range(components):
-                    actual_data += pack(e + t, *the_data[i].as_tuple())
+                    actual_data += pack(six.b(e) + six.b(t), *the_data[i].as_tuple())
             else:
                 raise six.raise_from("Can't handle this", exif_type)
             if (byte_size) > 4:
                 output_data += actual_data
-                actual_data = pack(e + "I", data_offset)
+                actual_data = pack(six.b(e) + six.b("I"), data_offset)
                 data_offset += byte_size
             else:
-                actual_data = actual_data + '\0' * (4 - len(actual_data))
+                actual_data = actual_data + six.b('\0') * (4 - len(actual_data))
             out_entries.append((tag, magic_type,
                                 magic_components, actual_data))
 
-        data = pack(e + 'H', len(self.entries))
+        data = pack(e + six.b('H'), len(self.entries))
         for entry in out_entries:
-            data += pack(self.e + "HHI", *entry[:3])
+            data += pack(self.e + six.b("HHI"), *entry[:3])
             data += entry[3]
 
         next_offset = data_offset
         if last:
-            data += pack(self.e + "I", 0)
+            data += pack(self.e + six.b("I"), 0)
         else:
-            data += pack(self.e + "I", next_offset)
+            data += pack(self.e + six.b("I"), next_offset)
         data += output_data
 
         assert (next_offset == offset+len(data))
@@ -558,7 +558,7 @@ class IfdData(object):
         for entry in self.entries:
             tag, exif_type, data = entry
             if exif_type == ASCII:
-                data = data.strip('\0')
+                data = data.strip(six.b('\0'))
             if (self.isifd(data)):
                 data.dump(f, indent + "    ")
             else:
@@ -617,8 +617,8 @@ class FujiIFD(IfdData):
     name = "FujiFilm"
 
     def getdata(self, e, offset, last=0):
-        pre_data = "FUJIFILM"
-        pre_data += pack("<I", 12)
+        pre_data = six.b("FUJIFILM")
+        pre_data += pack(six.b("<I"), 12)
         data, next_offset = IfdData.getdata(self, e, 12, last)
         return pre_data + data, next_offset + offset
 
@@ -640,7 +640,7 @@ def ifd_maker_note(e, offset, exif_file, mode, data):
                                        "Expecting a makernote header "
                                        "<FUJIFILM>. Got <%s>." % header)
         # The it has its own offset
-        ifd_offset = unpack("<I", data[offset+8:offset+12])[0]
+        ifd_offset = unpack(six.b("<I"), data[offset+8:offset+12])[0]
         # and it is always litte-endian
         e = "<"
         # and the data is referenced from the start the Ifd data, not the
@@ -673,7 +673,7 @@ class IfdGPS(IfdData):
     def __init__(self, e, offset, exif_file, mode, data=None):
         IfdData.__init__(self, e, offset, exif_file, mode, data)
         if data is None:
-            self.GPSVersionID = ['\x02', '\x02', '\x00', '\x00']
+            self.GPSVersionID = [six.b('\x02'), six.b('\x02'), six.b('\x00'), six.b('\x00')]
 
 
 class IfdExtendedEXIF(IfdData):
@@ -806,20 +806,20 @@ class IfdTIFF(IfdData):
     name = "TIFF Ifd"
 
     def special_handler(self, tag, data):
-        if tag in self.tags and self.tags[tag][1] == "Make":
-            self.exif_file.make = data.strip('\0')
+        if tag in self.tags and self.tags[tag][1] == six.b("Make"):
+            self.exif_file.make = data.strip(six.b('\0'))
 
     def new_gps(self):
-        if hasattr(self, 'GPSIFD'):
+        if hasattr(self, six.b('GPSIFD')):
             raise ValueError("Already have a GPS Ifd")
-        assert self.mode == "rw"
+        assert self.mode == six.b("rw")
         gps = IfdGPS(self.e, 0, self.mode, self.exif_file)
         self.GPSIFD = gps
         return gps
 
 
 class IfdThumbnail(IfdTIFF):
-    name = "Thumbnail"
+    name = six.b("Thumbnail")
 
     def ifd_handler(self, data):
         size = None
@@ -858,18 +858,15 @@ class ExifSegment(DefaultSegment):
 
     def __init__(self, marker, fd, data, mode):
         self.ifds = []
-        self.e = '<'
-        self.tiff_endian = 'II'
+        self.e = six.b('<')
+        self.tiff_endian = six.b('II')
         DefaultSegment.__init__(self, marker, fd, data, mode)
 
     def parse_data(self, data):
         """Overloads the DefaultSegment method to parse the data of
         this segment. Can raise InvalidFile if we don't get what we expect."""
-        exif = unpack("6s", data[:6])[0]
-        try:
-            exif = exif.strip('\0')
-        except TypeError:
-            pass
+        exif = unpack(six.b("6s"), data[:6])[0]
+        exif = exif.strip(six.b('\0'))
 
         if (exif != "Exif"):
             raise self.InvalidSegment("Bad Exif Marker. Got <%s>, "
@@ -879,16 +876,16 @@ class ExifSegment(DefaultSegment):
         data = None  # Don't need or want data for now on.
 
         self.tiff_endian = tiff_data[:2]
-        if self.tiff_endian == "II":
-            self.e = "<"
-        elif self.tiff_endian == "MM":
-            self.e = ">"
+        if self.tiff_endian == six.b("II"):
+            self.e = six.b("<")
+        elif self.tiff_endian == six.b("MM"):
+            self.e = six.b(">")
         else:
             raise JpegFile.InvalidFile("Bad TIFF endian header. Got <%s>, "
                                        "expecting <II> or <MM>" %
                                        self.tiff_endian)
 
-        tiff_tag, tiff_offset = unpack(self.e + 'HI', tiff_data[2:8])
+        tiff_tag, tiff_offset = unpack(six.b(self.e) + six.b('HI'), tiff_data[2:8])
 
         if (tiff_tag != TIFF_TAG):
             raise JpegFile.InvalidFile("Bad TIFF tag. Got <%x>, expecting "
@@ -904,7 +901,7 @@ class ExifSegment(DefaultSegment):
 
         while offset:
             count += 1
-            num_entries = unpack(self.e + 'H', tiff_data[offset:offset+2])[0]
+            num_entries = unpack(self.e + six.b('H'), tiff_data[offset:offset+2])[0]
             start = 2 + offset + (num_entries*12)
             if (count == 1):
                 ifd = IfdTIFF(self.e, offset, self, self.mode, tiff_data)
@@ -915,7 +912,7 @@ class ExifSegment(DefaultSegment):
             self.ifds.append(ifd)
 
             # Get next offset
-            offset = unpack(self.e + "I", tiff_data[start:start+4])[0]
+            offset = unpack(self.e + six.b("I"), tiff_data[start:start+4])[0]
 
     def dump(self, fd):
         six.print_(" Section: [ EXIF] Size: %6d" % (len(self.data)), file=fd)
@@ -923,7 +920,7 @@ class ExifSegment(DefaultSegment):
             ifd.dump(fd)
 
     def get_data(self):
-        ifds_data = ""
+        ifds_data = six.b("")
         next_offset = 8
         for ifd in self.ifds:
             debug("OUT IFD")
@@ -931,10 +928,10 @@ class ExifSegment(DefaultSegment):
                                                 ifd == self.ifds[-1])
             ifds_data += new_data
 
-        data = ""
-        data += "Exif\0\0"
+        data = six.b("")
+        data += six.b("Exif\0\0")
         data += self.tiff_endian
-        data += pack(self.e + "HI", 42, 8)
+        data += pack(self.e + six.b("HI"), 42, 8)
         data += ifds_data
 
         return data
@@ -947,15 +944,15 @@ class ExifSegment(DefaultSegment):
             return self.ifds[0]
         else:
             if create:
-                assert self.mode == "rw"
-                new_ifd = IfdTIFF(self.e, None, self, "rw")
+                assert self.mode == six.b("rw")
+                new_ifd = IfdTIFF(self.e, None, self, six.b("rw"))
                 self.ifds.insert(0, new_ifd)
                 return new_ifd
             else:
                 return None
 
     def _get_property(self):
-        if self.mode == "rw":
+        if self.mode == six.b("rw"):
             return self.get_primary(True)
         else:
             primary = self.get_primary()
@@ -1004,13 +1001,13 @@ class JpegFile:
     writeFile, writeString or writeFd. To get an ASCII dump of the data in a file
     use the dump method."""
 
-    def fromFile(filename, mode="rw"):
+    def fromFile(filename, mode=six.b("rw")):
         """Return a new JpegFile object from a given filename."""
         with open(filename, "rb") as f:
             return JpegFile(f, filename=filename, mode=mode)
     fromFile = staticmethod(fromFile)
 
-    def fromString(str, mode="rw"):
+    def fromString(str, mode=six.b("rw")):
         """Return a new JpegFile object taking data from a string."""
         try:
             str = six.b(str)
@@ -1019,7 +1016,7 @@ class JpegFile:
         return JpegFile(six.BytesIO(str), "from buffer", mode=mode)
     fromString = staticmethod(fromString)
 
-    def fromFd(fd, mode="rw"):
+    def fromFd(fd, mode=six.b("rw")):
         """Return a new JpegFile object taking data from a file object."""
         return JpegFile(fd, "fd <%d>" % fd.fileno(), mode=mode)
     fromFd = staticmethod(fromFd)
@@ -1036,7 +1033,7 @@ class JpegFile:
         """This exception is raised if a section is unable to be found."""
         pass
 
-    def __init__(self, input, filename=None, mode="rw"):
+    def __init__(self, input, filename=None, mode=six.b("rw")):
         """JpegFile Constructor. input is a file object, and filename
         is a string used to name the file. (filename is used only for
         display functions).  You shouldn't use this function directly,
@@ -1126,8 +1123,8 @@ class JpegFile:
         """add_exif adds a new ExifSegment to a file, and returns
         it. When adding an EXIF segment is will add it at the start of
         the list of segments."""
-        assert self.mode == "rw"
-        new_segment = ExifSegment(APP1, None, None, "rw")
+        assert self.mode == six.b("rw")
+        new_segment = ExifSegment(APP1, None, None, six.b("rw"))
         self._segments.insert(0, new_segment)
         return new_segment
 
@@ -1143,7 +1140,7 @@ class JpegFile:
 
     def _get_exif(self):
         """Exif Attribute property"""
-        if self.mode == "rw":
+        if self.mode == six.b("rw"):
             return self.get_exif(True)
         else:
             exif = self.get_exif(False)
@@ -1219,7 +1216,7 @@ class JpegFile:
 
     def set_geo(self, lat, lng):
         """Set the GeoLocation to a given lat and lng"""
-        if self.mode != "rw":
+        if self.mode != six.b("rw"):
             raise RWError
 
         gps = self.exif.primary.GPS

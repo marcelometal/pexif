@@ -68,16 +68,24 @@ class TestExifFunctions(unittest.TestCase):
     def test_badendian(self):
         data = list(open(DEFAULT_TESTFILE, "rb").read())
         # Now trash the exif signature
-        assert(data[0x1E] == 'I')
-        data[0x1E] = '0'
-        self.assertRaises(pexif.JpegFile.InvalidFile, pexif.JpegFile.fromString, "".join(data))
+        if six.PY2:
+            assert(data[0x1E] == six.b('I'))
+        else:
+            assert(data[0x1E] == six.byte2int(six.b('I')))
+        data[0x1E] = six.b('0')
+        invalid_data = six.b(''.join([str(i) for i in data]))
+        self.assertRaises(pexif.JpegFile.InvalidFile, pexif.JpegFile.fromString, invalid_data)
 
     def test_badtifftag(self):
         data = list(open(DEFAULT_TESTFILE, "rb").read())
         # Now trash the exif signature
-        assert(data[six.b(0x20)] == '\x2a')
-        data[six.b(0x20)] = '0'
-        self.assertRaises(pexif.JpegFile.InvalidFile, pexif.JpegFile.fromString, "".join(data))
+        if six.PY2:
+            assert(data[0x20] == six.b('\x2a'))
+        else:
+            assert(data[0x20] == six.byte2int(six.b('\x2a')))
+        data[0x20] = six.b('0')
+        invalid_data = six.b(''.join([str(i) for i in data]))
+        self.assertRaises(pexif.JpegFile.InvalidFile, pexif.JpegFile.fromString, invalid_data)
 
     def test_goodexif(self):
         for test_file, _ in test_data:
